@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>蓝牙智寻便签 · 产品需求文档</title>
+<style>
+  :root{
+    --ink:#14162b; --ink2:#4b4d63; --ink3:#7b7d92;
+    --brand:#4f46e5; --brand-deep:#3730a3; --teal:#0d9488;
+    --bg:#f5f6fa; --line:#e6e7f0; --paper:#fff;
+    --r:14px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Segoe UI","Microsoft YaHei","PingFang SC",system-ui,sans-serif;
+    line-height:1.75;font-size:16px;
+  }
+  .wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+
+  /* nav */
+  .nav{
+    position:sticky;top:0;z-index:20;
+    background:rgba(255,255,255,.88);backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line);
+  }
+  .nav .wrap{display:flex;align-items:center;gap:20px;height:56px}
+  .brand{font-weight:700;font-size:15px;letter-spacing:.02em;white-space:nowrap}
+  .brand i{color:var(--brand);font-style:normal}
+  .links{display:flex;gap:18px;overflow-x:auto;scrollbar-width:none}
+  .links::-webkit-scrollbar{display:none}
+  .links a{
+    color:var(--ink3);text-decoration:none;font-size:13.5px;
+    padding:4px 0;border-bottom:2px solid transparent;white-space:nowrap;
+  }
+  .links a:hover{color:var(--ink)}
+  .links a.on{color:var(--brand);border-color:var(--brand)}
+
+  /* hero */
+  .hero{
+    background:linear-gradient(140deg,#3f35c4 0%,#5a4ce0 55%,#7c5ce6 100%);
+    color:#fff;padding:56px 0 48px;
+  }
+  .hero .eyebrow{
+    font-size:11.5px;letter-spacing:.18em;text-transform:uppercase;
+    color:#cdc8ff;font-weight:600;
+  }
+  .hero h1{margin:12px 0 0;font-size:clamp(1.8rem,4vw,2.6rem);line-height:1.25}
+  .hero p{margin:12px 0 0;max-width:62ch;color:#e2dfff;font-size:15.5px}
+  .meta{margin-top:18px;font-size:12.5px;color:#c6c1ff}
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;margin-top:32px;
+    background:rgba(255,255,255,.18);border-radius:12px;overflow:hidden}
+  .kpi{background:rgba(255,255,255,.07);padding:14px 16px}
+  .kpi b{display:block;font-size:20px;font-weight:700;letter-spacing:.02em}
+  .kpi span{font-size:11.5px;color:#d5d1ff}
+
+  /* sections */
+  main{padding:40px 0 10px}
+  section{margin-bottom:44px;scroll-margin-top:70px}
+  .head{display:flex;align-items:baseline;gap:10px;margin-bottom:14px}
+  .num{font-size:11px;font-weight:700;letter-spacing:.12em;color:var(--brand);
+    background:#eceafe;padding:3px 8px;border-radius:6px}
+  h2{margin:0;font-size:clamp(1.15rem,2vw,1.4rem);font-weight:700}
+  h2 small{font-size:12.5px;font-weight:400;color:var(--ink3);margin-left:8px}
+
+  .card{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);
+    box-shadow:0 1px 2px rgba(20,22,43,.04),0 10px 24px -22px rgba(20,22,43,.5)}
+  .pad{padding:22px 24px}
+  .card p{margin:0;color:var(--ink2);font-size:14.8px}
+
+  /* generic grids */
+  .g2{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+  .g3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .g4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+
+  /* tables */
+  .tblwrap{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);overflow-x:auto}
+  table{border-collapse:collapse;width:100%;min-width:620px;font-size:13.8px}
+  th,td{text-align:left;padding:11px 16px;border-bottom:1px solid #eef0f6;vertical-align:top}
+  thead th{background:#fafbff;font-size:12px;letter-spacing:.06em;color:var(--ink3);font-weight:600;white-space:nowrap}
+  tbody tr:last-child td{border-bottom:0}
+  td:first-child{font-weight:600;color:var(--ink);white-space:nowrap}
+  .tag{display:inline-block;font-size:11.5px;padding:1px 8px;border-radius:999px;background:#f1f0ff;color:#5145c9}
+  .tag.high{background:#ffe8e8;color:#c0392b}
+  .tag.mid{background:#fff4dc;color:#a06a00}
+  .tag.low{background:#e8f3ee;color:#0d7a5f}
+
+  /* requirement cards */
+  .req{padding:20px 22px}
+  .req h3{margin:0 0 10px;font-size:15.5px;color:var(--brand-deep);display:flex;gap:9px;align-items:center}
+  .req h3 em{font-style:normal;font-size:11px;color:#9a92d8;font-weight:700;letter-spacing:.08em}
+  .req ul{margin:0;padding-left:18px}
+  .req li{font-size:13.8px;color:var(--ink2);margin:5px 0}
+
+  /* spec blocks */
+  .spec{margin-bottom:18px;overflow:hidden}
+  .spec > h3{
+    margin:0;padding:14px 22px;font-size:14.5px;font-weight:700;
+    background:#fafbff;border-bottom:1px solid var(--line);color:var(--ink);
+    display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap
+  }
+  .spec > h3 span{font-weight:400;font-size:12.5px;color:var(--ink3)}
+  .spec table{min-width:640px}
+  .spec .tblwrap{border:0;border-radius:0}
+
+  /* diagram */
+  .diagram{padding:16px 10px 6px;overflow-x:auto}
+  .diagram svg{display:block;width:100%;height:auto;min-width:720px}
+  .band{fill:#fffdf4;stroke:#e9dea9;stroke-width:1.4}
+  .lay{font-size:12.5px;font-weight:700;fill:#8a7f45;letter-spacing:.12em}
+  .node{fill:#efecff;stroke:#a99cdf;stroke-width:1.2}
+  .nt{font-size:13.5px;font-weight:600;fill:#221a52}
+  .ns{font-size:11px;fill:#5f5985}
+  .flow{stroke:#5b6472;stroke-width:1.7;fill:none;marker-end:url(#a)}
+  .bus{stroke:#5b6472;stroke-width:1.7;fill:none}
+  .fl{font-size:11px;fill:#5b6472}
+
+  /* phones / ui */
+  .ui li{font-size:13.6px;color:var(--ink2);margin:6px 0}
+  .ui ul{margin:0;padding-left:18px}
+
+  /* nfr */
+  .nfr{padding:16px 18px}
+  .nfr dt{font-size:11.5px;letter-spacing:.08em;color:var(--ink3);margin:0 0 3px}
+  .nfr dd{margin:0;font-size:14px;font-weight:600}
+  .nfr p{margin:4px 0 0;font-size:12.5px;color:var(--ink3)}
+
+  /* timeline */
+  .tl{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  .tl .card{padding:18px}
+  .tl h4{margin:0 0 4px;font-size:14.5px}
+  .tl .when{font-size:11.5px;color:var(--brand);font-weight:600;letter-spacing:.06em}
+  .tl p{margin:6px 0 0;font-size:12.8px;color:var(--ink3)}
+
+  .note{font-size:12.5px;color:var(--ink3);margin:10px 2px 0}
+  footer{margin-top:48px;background:#15162c;color:#a9a8c4;padding:26px 0;font-size:13px}
+  footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  footer b{color:#fff;font-weight:600}
+
+  @media (max-width:900px){
+    .g4,.kpis{grid-template-columns:repeat(2,1fr)}
+    .g3{grid-template-columns:1fr}
+    .tl{grid-template-columns:repeat(2,1fr)}
+  }
+  @media (max-width:640px){
+    .g2{grid-template-columns:1fr}
+    .kpis{grid-template-columns:1fr 1fr}
+    .tl{grid-template-columns:1fr}
+    .pad{padding:18px}
+    /* 窄屏：表格改为自动折行，避免关键列被挤出可视区 */
+    table{min-width:0;font-size:12.6px}
+    th,td{padding:9px 11px}
+    th{white-space:normal}
+    td:first-child{white-space:normal}
+    .spec > h3{padding:12px 16px}
+  }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="wrap">
+    <span class="brand">蓝牙<i>智寻</i>便签</span>
+    <div class="links">
+      <a href="#problem">问题</a>
+      <a href="#users">用户</a>
+      <a href="#goals">目标</a>
+      <a href="#needs">需求</a>
+      <a href="#spec">功能</a>
+      <a href="#arch">架构</a>
+      <a href="#ui">界面</a>
+      <a href="#nfr">非功能</a>
+      <a href="#data">数据</a>
+      <a href="#plan">计划</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="eyebrow">Product Requirements</div>
+    <h1>蓝牙智寻便签</h1>
+    <p>以超薄便签形态切入的 BLE 5.0 物品寻回方案：贴在钥匙、钱包、证件上，手机一键响铃找物，物品也能反过来找手机，并支持家庭协同查找与丢失后的匿名上报。</p>
+    <div class="meta">作者 ww ww　·　2026-09-06　·　V1.0</div>
+    <div class="kpis">
+      <div class="kpi"><b>50,000</b><span>6 个月激活用户</span></div>
+      <div class="kpi"><b>≤ 3 分钟</b><span>首次绑定时长</span></div>
+      <div class="kpi"><b>≤ 3 米</b><span>室内定位精度</span></div>
+      <div class="kpi"><b>≥ 6 个月</b><span>便签续航</span></div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- 01 问题与机会 -->
+  <section id="problem">
+    <div class="head"><span class="num">01</span><h2>问题与机会</h2></div>
+    <div class="card pad">
+      <p>钥匙、钱包、遥控器等高频物品随手放置导致反复寻找，平均每人每天因找物品浪费 5–10 分钟，长期积累造成显著时间损耗与焦虑感。现有蓝牙追踪器（AirTag、Tile 等）体积偏大、价格较高、安装方式单一，难以满足小件物品的轻量化粘贴场景。</p>
+      <p style="margin-top:10px">蓝牙智寻便签以超薄便签形态切入，结合 BLE 5.0 精准定位与家庭协同查找，填补轻量化、低成本、多场景物品管理的市场空白。</p>
+    </div>
+  </section>
+
+  <!-- 02 用户 -->
+  <section id="users">
+    <div class="head"><span class="num">02</span><h2>目标用户<small>18–55 岁居家人群、上班族、学生及健忘人群</small></h2></div>
+    <div class="tblwrap">
+      <table>
+        <thead><tr><th>用户类型</th><th>核心诉求</th><th>典型场景</th><th>痛点优先级</th></tr></thead>
+        <tbody>
+          <tr><td>居家人群 / 上班族</td><td>快速找到钥匙、钱包</td><td>出门前 30 秒内找到物品</td><td><span class="tag high">高</span></td></tr>
+          <tr><td>健忘人群 / 老年用户</td><td>防遗忘提醒、操作简单</td><td>离家时提醒未带重要物品</td><td><span class="tag high">高</span></td></tr>
+          <tr><td>学生群体</td><td>低成本、轻量化</td><td>书包、证件、耳机追踪</td><td><span class="tag mid">中</span></td></tr>
+          <tr><td>家庭多人用户</td><td>协同查找、权限共享</td><td>家人帮忙找物品</td><td><span class="tag mid">中</span></td></tr>
+          <tr><td>母婴 / 宠物用户</td><td>儿童玩具 / 宠物项圈追踪</td><td>宠物走失预警</td><td><span class="tag low">低</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">用户对操作复杂度敏感：期望绑定 ≤ 3 步、查找响应 ≤ 10 秒，并具备家庭多人协同能力。</p>
+  </section>
+
+  <!-- 03 目标 -->
+  <section id="goals">
+    <div class="head"><span class="num">03</span><h2>目标与度量指标</h2></div>
+    <div class="g4">
+      <div class="card pad">
+        <b style="font-size:13px;color:var(--brand)">核心目标</b>
+        <p style="margin-top:8px;font-size:13.5px">6 个月内激活 50,000 用户；绑定成功率 100%；查找成功率 ≥ 95%。</p>
+      </div>
+      <div class="card pad">
+        <b style="font-size:13px;color:var(--brand)">体验目标</b>
+        <p style="margin-top:8px;font-size:13.5px">首次绑定 ≤ 3 分钟；查找延迟 ≤ 2 秒；7 日留存 ≥ 60%。</p>
+      </div>
+      <div class="card pad">
+        <b style="font-size:13px;color:var(--brand)">硬件目标</b>
+        <p style="margin-top:8px;font-size:13.5px">续航 ≥ 6 个月；室内精度 ≤ 3 米；低电量提醒准确率 ≥ 99%。</p>
+      </div>
+      <div class="card pad">
+        <b style="font-size:13px;color:var(--brand)">商业目标</b>
+        <p style="margin-top:8px;font-size:13.5px">12 个月家庭共享渗透率 30%；协同定位成功率 ≥ 40%。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 04 核心需求 -->
+  <section id="needs">
+    <div class="head"><span class="num">04</span><h2>核心需求与用户故事</h2></div>
+    <div class="g2">
+      <div class="card req">
+        <h3><em>R1</em>设备绑定与管理</h3>
+        <ul>
+          <li>打开 App 自动扫描附近便签，3 步内完成绑定</li>
+          <li>自定义名称、图标与分类（如「钥匙」「钱包」）</li>
+          <li>批量解绑、重置、排序与收藏</li>
+        </ul>
+      </div>
+      <div class="card req">
+        <h3><em>R2</em>一键定位查找</h3>
+        <ul>
+          <li>点击便签立即蜂鸣 + 灯光闪烁，同步显示距离与方向</li>
+          <li>地图模式查看最后已知位置，超出蓝牙范围也能追溯</li>
+          <li>查看历史移动轨迹，回溯最近放置位置</li>
+        </ul>
+      </div>
+      <div class="card req">
+        <h3><em>R3</em>双向寻物</h3>
+        <ul>
+          <li>App 远程触发便签响铃与闪灯</li>
+          <li>长按便签按键，手机立即响铃并弹通知（静音也生效）</li>
+        </ul>
+      </div>
+      <div class="card req">
+        <h3><em>R4</em>防丢与智能提醒</h3>
+        <ul>
+          <li>距离超出阈值自动报警</li>
+          <li>离开家 / 公司时提醒未携带「重要」物品</li>
+          <li>电量低于 10% 推送通知</li>
+        </ul>
+      </div>
+      <div class="card req">
+        <h3><em>R5</em>家庭共享与协同</h3>
+        <ul>
+          <li>权限分享给家人，多人同时查找同一物品</li>
+          <li>标记「丢失」后，其他用户设备匿名辅助定位</li>
+        </ul>
+      </div>
+      <div class="card req">
+        <h3><em>R6</em>设置与个性化</h3>
+        <ul>
+          <li>蜂鸣音量、LED 开关、提醒距离阈值、静音时段可调</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 05 功能规格 -->
+  <section id="spec">
+    <div class="head"><span class="num">05</span><h2>功能规格</h2></div>
+
+    <div class="card spec">
+      <h3>F1　设备绑定流程 <span>3 步完成，异常可回退</span></h3>
+      <div class="tblwrap">
+        <table>
+          <thead><tr><th>步骤</th><th>操作</th><th>系统行为</th><th>异常处理</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>进入「添加设备」</td><td>自动开启蓝牙扫描，列出附近未绑定便签</td><td>蓝牙未开启：提示授权</td></tr>
+            <tr><td>2</td><td>选择便签，点击「绑定」</td><td>BLE 配对握手，成功后写入设备 ID</td><td>失败重试，最多 3 次后引导重置硬件</td></tr>
+            <tr><td>3</td><td>命名、选择图标与分类</td><td>保存至本地与云端，进入主界面</td><td>网络异常：本地保存，后台同步</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card spec">
+      <h3>F2　查找状态机 <span>待机 / 查找中 / 超出范围 / 已找到 / 低电量</span></h3>
+      <div class="tblwrap">
+        <table>
+          <thead><tr><th>状态</th><th>触发条件</th><th>App 行为</th><th>硬件行为</th></tr></thead>
+          <tbody>
+            <tr><td>待机</td><td>正常连接中</td><td>显示距离、信号强度</td><td>低功耗广播</td></tr>
+            <tr><td>查找中</td><td>用户点击「查找」</td><td>显示方向指针，距离 1 秒刷新</td><td>蜂鸣 + LED 闪烁，30 秒或手动停止</td></tr>
+            <tr><td>超出范围</td><td>RSSI 信号丢失 &gt; 5 秒</td><td>显示最后位置，提示超出范围</td><td>无响应</td></tr>
+            <tr><td>已找到</td><td>点击「停止」或按下便签按键</td><td>停止查找，记录找到时间</td><td>停止蜂鸣与闪烁</td></tr>
+            <tr><td>低电量</td><td>电量 &lt; 10%</td><td>推送通知，设备列表标红</td><td>低频蜂鸣提示</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card spec">
+      <h3>F3　防丢提醒规则 <span>四类提醒均可配置</span></h3>
+      <div class="tblwrap">
+        <table>
+          <thead><tr><th>提醒类型</th><th>触发条件</th><th>提醒方式</th><th>可配置项</th></tr></thead>
+          <tbody>
+            <tr><td>离开提醒</td><td>距离超出阈值（默认 10 米）</td><td>App 推送 + 震动</td><td>阈值 5–30 米、开关</td></tr>
+            <tr><td>遗忘提醒</td><td>离开常用地点且未携带标记物品</td><td>App 推送通知</td><td>重要物品标记、地点设置</td></tr>
+            <tr><td>低电量提醒</td><td>电量 &lt; 10%</td><td>App 推送 + 列表警告图标</td><td>阈值 5%–20%</td></tr>
+            <tr><td>静音时段</td><td>用户设定的免打扰时间段</td><td>提醒静默（低电量除外）</td><td>时间段设置</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card spec">
+      <h3>F4　共享权限模型 <span>三级角色</span></h3>
+      <div class="tblwrap">
+        <table>
+          <thead><tr><th>角色</th><th>权限</th><th>限制</th></tr></thead>
+          <tbody>
+            <tr><td>设备所有者</td><td>查找、设置、共享、解绑、丢失上报</td><td>—</td></tr>
+            <tr><td>家庭成员</td><td>查找、响铃、查看历史位置</td><td>不可修改设置、不可解绑、不可再次共享</td></tr>
+            <tr><td>匿名协助用户</td><td>丢失模式下匿名上报位置信号</td><td>不可查看设备信息，数据匿名加密</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- 06 架构 -->
+  <section id="arch">
+    <div class="head"><span class="num">06</span><h2>系统架构</h2></div>
+    <div class="card pad" style="margin-bottom:16px">
+      <p>采用「硬件 BLE 便签 + 移动端 App + 云端后台」三层架构。App 通过 BLE 5.0 直接与便签通信，实现本地实时定位；云端负责账号管理、设备状态同步、共享权限与丢失协同，<b>位置数据优先本地存储</b>，仅在共享与丢失场景下加密上传。</p>
+    </div>
+    <div class="card">
+      <div class="diagram">
+        <svg viewBox="0 0 1160 866" role="img" aria-labelledby="at">
+          <title id="at">蓝牙智寻便签系统架构图</title>
+          <defs>
+            <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,1 L9,5 L0,9 z" fill="#5b6472"/>
+            </marker>
+          </defs>
+
+          <rect class="band" x="110" y="20"  width="1000" height="112" rx="12"/>
+          <rect class="band" x="110" y="170" width="1000" height="212" rx="12"/>
+          <rect class="band" x="110" y="420" width="1000" height="234" rx="12"/>
+          <rect class="band" x="110" y="692" width="1000" height="152" rx="12"/>
+
+          <text class="lay" x="134" y="46">硬件层</text>
+          <text class="lay" x="134" y="196">移动端</text>
+          <text class="lay" x="134" y="446">云端后台</text>
+          <text class="lay" x="134" y="718">外部服务</text>
+
+          <!-- 箭头 -->
+          <line class="flow" x1="606" y1="132" x2="606" y2="166"/>
+          <text class="fl" x="620" y="154">BLE 5.0 广播 / 指令</text>
+          <line class="flow" x1="606" y1="382" x2="606" y2="416"/>
+          <text class="fl" x="620" y="404">HTTPS REST API</text>
+          <line class="flow" x1="274" y1="654" x2="274" y2="688"/>
+          <text class="fl" x="288" y="676">匿名位置上报</text>
+
+          <!-- 硬件 -->
+          <rect class="node" x="376" y="62" width="460" height="56" rx="8"/>
+          <text class="nt" x="606" y="86" text-anchor="middle">BLE 便签硬件</text>
+          <text class="ns" x="606" y="105" text-anchor="middle">BLE 5.0 + 蜂鸣器 + LED + 按键</text>
+
+          <!-- 移动端 -->
+          <rect class="node" x="134" y="214" width="300" height="132" rx="9"/>
+          <text class="nt" x="156" y="248">BLE 协议栈</text>
+          <text class="ns" x="156" y="274">RSSI 测距</text>
+          <text class="ns" x="156" y="294">指令收发</text>
+
+          <rect class="node" x="454" y="214" width="300" height="132" rx="9"/>
+          <text class="nt" x="476" y="248">移动端 App</text>
+          <text class="ns" x="476" y="274">iOS 13+ / Android 8.0+</text>
+          <text class="ns" x="476" y="294">查找 · 提醒 · 轨迹</text>
+
+          <rect class="node" x="774" y="214" width="300" height="132" rx="9"/>
+          <text class="nt" x="796" y="248">本地存储</text>
+          <text class="ns" x="796" y="274">设备信息</text>
+          <text class="ns" x="796" y="294">历史轨迹</text>
+
+          <!-- 云端 -->
+          <rect class="node" x="456" y="452" width="300" height="56" rx="9"/>
+          <text class="nt" x="606" y="476" text-anchor="middle">REST API 服务</text>
+          <text class="ns" x="606" y="495" text-anchor="middle">Node.js / Express</text>
+
+          <path class="bus" d="M606,508 L606,530"/>
+          <path class="bus" d="M274,530 L946,530"/>
+          <line class="flow" x1="274" y1="530" x2="274" y2="558"/>
+          <line class="flow" x1="498" y1="530" x2="498" y2="558"/>
+          <line class="flow" x1="722" y1="530" x2="722" y2="558"/>
+          <line class="flow" x1="946" y1="530" x2="946" y2="558"/>
+
+          <rect class="node" x="170" y="560" width="208" height="76" rx="8"/>
+          <text class="nt" x="190" y="588" style="font-size:12.5px">账号与权限</text>
+          <text class="ns" x="190" y="608">注册 / 登录</text>
+          <text class="ns" x="190" y="624">家庭组</text>
+
+          <rect class="node" x="394" y="560" width="208" height="76" rx="8"/>
+          <text class="nt" x="414" y="588" style="font-size:12.5px">设备状态同步</text>
+          <text class="ns" x="414" y="608">位置 / 电量</text>
+          <text class="ns" x="414" y="624">丢失状态</text>
+
+          <rect class="node" x="618" y="560" width="208" height="76" rx="8"/>
+          <text class="nt" x="638" y="588" style="font-size:12.5px">数据库</text>
+          <text class="ns" x="638" y="608">PostgreSQL</text>
+          <text class="ns" x="638" y="624">持久化存储</text>
+
+          <rect class="node" x="842" y="560" width="208" height="76" rx="8"/>
+          <text class="nt" x="862" y="588" style="font-size:12.5px">推送通知</text>
+          <text class="ns" x="862" y="608">APNs / FCM</text>
+          <text class="ns" x="862" y="624">触达 App</text>
+
+          <!-- 外部 -->
+          <rect class="node" x="158" y="724" width="440" height="88" rx="9"/>
+          <text class="nt" x="178" y="752">匿名协同网络</text>
+          <text class="ns" x="178" y="774">丢失设备位置由周围设备匿名上报</text>
+          <text class="ns" x="178" y="792">众包查找 · 隐私脱敏</text>
+
+          <rect class="node" x="622" y="724" width="440" height="88" rx="9"/>
+          <text class="nt" x="642" y="752">地图服务</text>
+          <text class="ns" x="642" y="774">高德地图 API · 供 App 内置 SDK 调用</text>
+          <text class="ns" x="642" y="792">地图渲染 · 坐标解析</text>
+        </svg>
+      </div>
+    </div>
+    <p class="note">位置数据本地优先；共享与丢失场景下才经 TLS 加密上传云端，匿名上报不含用户身份信息。</p>
+  </section>
+
+  <!-- 07 界面 -->
+  <section id="ui">
+    <div class="head"><span class="num">07</span><h2>界面与交互</h2></div>
+    <div class="g3">
+      <div class="card pad ui">
+        <h3 style="margin:0 0 8px;font-size:14.5px">主界面 · 设备列表</h3>
+        <ul>
+          <li>顶部搜索栏 + 添加设备</li>
+          <li>设备卡片：图标、名称、距离、信号强度、一键查找</li>
+          <li>状态色：在线绿 / 超范围灰 / 低电量红 / 丢失橙</li>
+          <li>底部导航：首页 / 地图 / 我的</li>
+        </ul>
+      </div>
+      <div class="card pad ui">
+        <h3 style="margin:0 0 8px;font-size:14.5px">设备详情页</h3>
+        <ul>
+          <li>实时距离 + 罗盘式方向指针</li>
+          <li>操作：响铃 / 停止 / 共享 / 标记丢失</li>
+          <li>历史位置时间线（近 30 天）</li>
+          <li>设置：音量、灯光、提醒距离</li>
+        </ul>
+      </div>
+      <div class="card pad ui">
+        <h3 style="margin:0 0 8px;font-size:14.5px">我的</h3>
+        <ul>
+          <li>家庭组：成员列表、邀请 / 移除</li>
+          <li>丢失上报记录</li>
+          <li>电池提醒汇总</li>
+          <li>帮助与反馈</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 08 非功能 -->
+  <section id="nfr">
+    <div class="head"><span class="num">08</span><h2>非功能需求</h2></div>
+    <div class="g4">
+      <div class="card nfr"><dt>性能</dt><dd>&lt; 1 秒</dd><p>BLE 连接响应；指令下发 &lt; 2 秒；冷启动 &lt; 3 秒</p></div>
+      <div class="card nfr"><dt>稳定性</dt><dd>≥ 99%</dd><p>10 米内无断连率</p></div>
+      <div class="card nfr"><dt>安全</dt><dd>TLS 1.3</dd><p>传输加密；本地 AES-256；匿名上报差分隐私</p></div>
+      <div class="card nfr"><dt>兼容性</dt><dd>iOS 13+</dd><p>Android 8.0+</p></div>
+      <div class="card nfr"><dt>易用性</dt><dd>≤ 3 步</dd><p>首次绑定流程步骤数</p></div>
+      <div class="card nfr"><dt>可观测</dt><dd>&lt; 5 分钟</dd><p>异常告警响应</p></div>
+      <div class="card nfr"><dt>合规</dt><dd>个保法</dd><p>位置数据本地优先，支持申请删除</p></div>
+      <div class="card nfr"><dt>隐私</dt><dd>匿名</dd><p>上报数据不含身份信息</p></div>
+    </div>
+  </section>
+
+  <!-- 09 数据 -->
+  <section id="data">
+    <div class="head"><span class="num">09</span><h2>数据实体与接口</h2></div>
+    <div class="tblwrap" style="margin-bottom:16px">
+      <table>
+        <thead><tr><th>实体</th><th>关键字段</th><th>存储位置</th></tr></thead>
+        <tbody>
+          <tr><td>用户 User</td><td>user_id, phone, email, family_group_id, created_at</td><td>云端 PostgreSQL</td></tr>
+          <tr><td>便签设备 Tag</td><td>tag_id, ble_mac, name, icon, category, owner_id, battery_level, status</td><td>云端 + 本地缓存</td></tr>
+          <tr><td>位置记录 LocationLog</td><td>log_id, tag_id, rssi, last_seen_lat, last_seen_lng, timestamp</td><td>本地优先，共享时同步</td></tr>
+          <tr><td>共享权限 SharePermission</td><td>share_id, tag_id, owner_id, shared_to_user_id, permission_level</td><td>云端 PostgreSQL</td></tr>
+          <tr><td>丢失上报 LostReport</td><td>report_id, tag_id, reported_at, status, anonymous_sightings</td><td>云端 PostgreSQL</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="tblwrap">
+      <table>
+        <thead><tr><th>接口</th><th>方法</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr><td>/api/tags/bind</td><td>POST</td><td>绑定新便签，写入设备信息</td></tr>
+          <tr><td>/api/tags/{id}/ring</td><td>POST</td><td>远程触发响铃（云端推送至 App 再转 BLE）</td></tr>
+          <tr><td>/api/tags/{id}/location</td><td>GET / POST</td><td>获取 / 上报最后位置</td></tr>
+          <tr><td>/api/tags/{id}/share</td><td>POST</td><td>创建共享权限</td></tr>
+          <tr><td>/api/tags/{id}/lost</td><td>POST</td><td>标记 / 取消丢失</td></tr>
+          <tr><td>/api/family/invite</td><td>POST</td><td>邀请家庭成员</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 10 计划与风险 -->
+  <section id="plan">
+    <div class="head"><span class="num">10</span><h2>上线计划与风险</h2></div>
+    <div class="tl" style="margin-bottom:16px">
+      <div class="card"><span class="when">上线前 8 周</span><h4>Alpha 内测</h4><p>验证绑定、查找、双向寻物、防丢提醒。</p></div>
+      <div class="card"><span class="when">上线前 4 周</span><h4>Beta 公测</h4><p>500 名真实用户场景测试，家庭共享与稳定性优化。</p></div>
+      <div class="card"><span class="when">目标日期</span><h4>正式上线</h4><p>全量发布，双端上架。</p></div>
+      <div class="card"><span class="when">上线后 6 周</span><h4>V1.1</h4><p>UX 优化、性能调优、新场景支持。</p></div>
+    </div>
+    <div class="tblwrap">
+      <table>
+        <thead><tr><th>风险</th><th>影响</th><th>概率</th><th>缓解措施</th></tr></thead>
+        <tbody>
+          <tr><td>不同机型 BLE 兼容性差异</td><td>连接不稳定</td><td><span class="tag high">高</span></td><td>Top 50 机型兼容测试，建立白名单</td></tr>
+          <tr><td>室内定位受环境干扰</td><td>距离显示不准</td><td><span class="tag mid">中</span></td><td>多次采样平均 + 卡尔曼滤波，标注「粗略定位」</td></tr>
+          <tr><td>位置隐私合规</td><td>法律风险</td><td><span class="tag mid">中</span></td><td>本地优先、加密存储、支持删除、合规审查</td></tr>
+          <tr><td>硬件供应链延期</td><td>上线推迟</td><td><span class="tag mid">中</span></td><td>提前 12 周锁定供应商，准备备选方案</td></tr>
+          <tr><td>静音穿透受系统限制</td><td>便签找手机失效</td><td><span class="tag high">高</span></td><td>iOS Critical Alert，Android 高优先级通道</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 11 验收 -->
+  <section id="accept">
+    <div class="head"><span class="num">11</span><h2>验收标准与假设</h2></div>
+    <div class="tblwrap" style="margin-bottom:16px">
+      <table>
+        <thead><tr><th>验收项</th><th>标准</th><th>测试方法</th></tr></thead>
+        <tbody>
+          <tr><td>绑定成功率</td><td>100%（标准环境）</td><td>100 次绑定测试</td></tr>
+          <tr><td>查找成功率</td><td>≥ 95%（10 米内）</td><td>模拟 100 次查找</td></tr>
+          <tr><td>查找响应延迟</td><td>&lt; 2 秒</td><td>点击到响铃计时</td></tr>
+          <tr><td>双向寻物</td><td>两向均可用，静音模式亦生效</td><td>功能测试</td></tr>
+          <tr><td>防丢提醒</td><td>无漏报，误报率 &lt; 5%</td><td>50 次超距模拟</td></tr>
+          <tr><td>家庭共享</td><td>2–5 人协同查找正常</td><td>家庭组联调</td></tr>
+          <tr><td>硬件续航</td><td>≥ 6 个月</td><td>加速老化 + 实机追踪</td></tr>
+          <tr><td>低电量提醒</td><td>&lt; 10% 时 100% 推送</td><td>模拟低电量验证</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="card pad">
+      <b style="font-size:13.5px;color:var(--brand)">关键假设与待验证项</b>
+      <ul style="margin:10px 0 0;padding-left:18px;color:var(--ink2);font-size:13.8px">
+        <li>用户愿为硬件便签支付 29–59 元 / 个，需调研验证。</li>
+        <li>家庭共享场景中，用户愿意邀请家人注册同一平台账号。</li>
+        <li>匿名协同网络需 ≥ 10,000 活跃用户才有效，冷启动阶段效果有限。</li>
+        <li>iOS Critical Alert 权限可通过审核，用于静音穿透。</li>
+        <li style="color:#a06a00">待验证：多墙壁、金属干扰环境下 RSSI 精度能否稳定 ≤ 3 米。</li>
+      </ul>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <span><b>蓝牙智寻便签</b> · 产品需求文档 V1.0</span>
+    <span>ww ww　·　2026-09-06</span>
+  </div>
+</footer>
+
+<script>
+  (function () {
+    var links = Array.prototype.slice.call(document.querySelectorAll('.links a'));
+    var map = {};
+    links.forEach(function (a) { map[a.getAttribute('href').slice(1)] = a; });
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (!e.isIntersecting) return;
+        links.forEach(function (a) { a.classList.remove('on'); });
+        var a = map[e.target.id];
+        if (a) { a.classList.add('on'); a.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }
+      });
+    }, { rootMargin: '-70px 0px -70% 0px' });
+    document.querySelectorAll('main section').forEach(function (s) { io.observe(s); });
+  })();
+</script>
+</body>
+</html>
