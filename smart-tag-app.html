@@ -1,0 +1,1227 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="theme-color" content="#4f46e5">
+<title>蓝牙智寻便签</title>
+<style>
+  :root{
+    --ink:#15172b; --ink2:#4d5069; --ink3:#8b8ea6;
+    --brand:#4f46e5; --brand-2:#6d5ce7;
+    --ok:#10b981; --warn:#f59e0b; --bad:#ef4444; --out:#9aa0b4;
+    --bg:#eef0f6; --paper:#fff; --soft:#f5f6fb; --line:#e9eaf2;
+    --r:18px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    margin:0;background:#e8eaf2;
+    background-image:radial-gradient(1200px 600px at 50% -10%,#f7f8fc,transparent 70%);
+    font-family:"Segoe UI","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+    color:var(--ink);display:grid;place-items:center;overflow:hidden;
+  }
+  button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+  input{font:inherit;color:inherit}
+
+  /* ============ 手机外壳 ============ */
+  .phone{
+    position:relative;width:392px;height:844px;background:#0d0e18;
+    border-radius:46px;padding:10px;
+    box-shadow:0 40px 80px -30px rgba(20,22,60,.55),0 0 0 1px #23253a inset;
+  }
+  .screen{
+    position:relative;width:100%;height:100%;background:var(--bg);
+    border-radius:37px;overflow:hidden;display:flex;flex-direction:column;
+  }
+  .notch{
+    position:absolute;top:10px;left:50%;transform:translateX(-50%);
+    width:112px;height:26px;background:#0d0e18;border-radius:0 0 16px 16px;z-index:30;
+  }
+  /* 状态栏 */
+  .statusbar{
+    height:44px;flex:0 0 44px;display:flex;align-items:center;justify-content:space-between;
+    padding:0 22px;font-size:12.5px;font-weight:600;color:var(--ink);z-index:20;
+    background:transparent;position:relative;
+  }
+  .statusbar .right{display:flex;gap:5px;align-items:center}
+  .sig{display:flex;align-items:flex-end;gap:2px;height:10px}
+  .sig i{width:2.5px;background:currentColor;border-radius:1px;display:block}
+  .sig i:nth-child(1){height:3px}.sig i:nth-child(2){height:5px}
+  .sig i:nth-child(3){height:7px}.sig i:nth-child(4){height:9px}
+  .batt{width:20px;height:10px;border:1.3px solid currentColor;border-radius:3px;position:relative;opacity:.9}
+  .batt::after{content:"";position:absolute;right:-3.5px;top:3px;width:2px;height:4px;background:currentColor;border-radius:0 1px 1px 0}
+  .batt i{position:absolute;inset:1.5px;width:70%;background:currentColor;border-radius:1px;display:block}
+
+  /* ============ 主区域 ============ */
+  .app{flex:1;display:flex;flex-direction:column;min-height:0;position:relative}
+  .screen-body{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .screen-body::-webkit-scrollbar{display:none}
+  .pad{padding:0 20px}
+  .push{animation:pushIn .26s cubic-bezier(.22,.61,.36,1)}
+  @keyframes pushIn{from{transform:translateX(16px);opacity:0}to{transform:none;opacity:1}}
+
+  /* ============ 首页 ============ */
+  .home-head{padding:6px 20px 14px}
+  .greet{font-size:12.5px;color:var(--ink3);letter-spacing:.02em}
+  .home-title{display:flex;align-items:center;justify-content:space-between;margin-top:2px}
+  .home-title h1{margin:0;font-size:23px;letter-spacing:.01em}
+  .home-title h1 small{font-size:12.5px;font-weight:500;color:var(--ink3);margin-left:6px}
+  .icon-btn{
+    width:38px;height:38px;border-radius:13px;background:#fff;border:1px solid var(--line);
+    display:grid;place-items:center;font-size:16px;
+    box-shadow:0 2px 6px rgba(24,26,64,.05);
+  }
+  .search{
+    margin:14px 20px 4px;display:flex;align-items:center;gap:8px;
+    background:#fff;border:1px solid var(--line);border-radius:14px;padding:9px 12px;
+    box-shadow:0 2px 6px rgba(24,26,64,.04);
+  }
+  .search input{border:0;outline:0;background:none;flex:1;font-size:13.5px;color:var(--ink)}
+  .search input::placeholder{color:#a8abbe}
+  .search span{color:var(--ink3);font-size:14px}
+
+  .list{padding:14px 20px 96px;display:flex;flex-direction:column;gap:12px}
+  .dev{
+    background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:14px;
+    display:flex;gap:13px;align-items:center;position:relative;overflow:hidden;
+    box-shadow:0 2px 10px rgba(24,26,64,.05);
+    transition:transform .15s ease, box-shadow .15s ease;
+  }
+  .dev:active{transform:scale(.985)}
+  .dev .ic{
+    width:48px;height:48px;border-radius:15px;background:var(--soft);
+    display:grid;place-items:center;font-size:22px;flex:0 0 48px;
+  }
+  .dev .meta{flex:1;min-width:0}
+  .dev .nm{display:flex;align-items:center;gap:6px;font-size:15px;font-weight:650}
+  .dev .nm .dot{width:6px;height:6px;border-radius:50%;background:var(--ok);flex:0 0 6px}
+  .dev .sub{font-size:12px;color:var(--ink3);margin-top:3px;display:flex;gap:8px;align-items:center}
+  .dev .dist{font-variant-numeric:tabular-nums;font-weight:700;color:var(--ink);font-size:12.5px}
+  .dev .ring{
+    width:40px;height:40px;border-radius:50%;background:#f0eeff;color:var(--brand);
+    display:grid;place-items:center;font-size:16px;flex:0 0 40px;border:1px solid #e3dfff;
+  }
+  .dev .ring.on{background:var(--brand);color:#fff;border-color:var(--brand);animation:ringPulse 1s infinite}
+  @keyframes ringPulse{0%,100%{box-shadow:0 0 0 0 rgba(79,70,229,.45)}50%{box-shadow:0 0 0 9px rgba(79,70,229,0)}}
+  .dev.is-out{opacity:.72}
+  .dev.is-out .dot{background:var(--out)}
+  .dev.is-low .dot{background:var(--bad)}
+  .dev.is-lost .dot{background:var(--warn)}
+  .dev .badge{
+    position:absolute;top:0;right:0;font-size:10.5px;font-weight:700;letter-spacing:.04em;
+    padding:3px 10px 3px 12px;border-radius:0 0 0 12px;color:#fff;background:var(--out);
+  }
+  .dev.is-lost .badge{background:var(--warn)}
+  .dev.is-low .badge{background:var(--bad)}
+  .empty{text-align:center;color:var(--ink3);font-size:13px;padding:40px 0}
+
+  .fab{
+    position:absolute;right:20px;bottom:86px;width:54px;height:54px;border-radius:19px;
+    background:linear-gradient(140deg,var(--brand),var(--brand-2));color:#fff;font-size:24px;
+    display:grid;place-items:center;box-shadow:0 12px 24px -8px rgba(79,70,229,.7);z-index:12;
+  }
+  .fab:active{transform:scale(.95)}
+
+  /* ============ 底部导航 ============ */
+  .tabbar{
+    flex:0 0 auto;height:76px;background:rgba(255,255,255,.94);backdrop-filter:blur(12px);
+    border-top:1px solid var(--line);display:flex;padding:0 8px 10px;z-index:15;
+  }
+  .tab{
+    flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+    font-size:10.5px;color:var(--ink3);font-weight:600;padding-top:8px;
+  }
+  .tab svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+  .tab.on{color:var(--brand)}
+  .tab.on svg{stroke-width:2.1}
+
+  /* ============ 通用页头 ============ */
+  .bar{
+    flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:2px 16px 12px;background:transparent;
+  }
+  .bar .back,.bar .more{
+    width:36px;height:36px;border-radius:12px;display:grid;place-items:center;font-size:17px;color:var(--ink2);
+    background:#fff;border:1px solid var(--line);
+  }
+  .bar h2{margin:0;font-size:17px;font-weight:700;flex:1;text-align:center;margin-left:-36px}
+  .bar h2.left{text-align:left;margin-left:0}
+
+  /* ============ 详情 ============ */
+  .detail{padding:0 20px 30px}
+  .gauge-wrap{display:grid;place-items:center;margin:4px 0 2px;position:relative}
+  .gauge{width:250px;height:250px;position:relative;display:grid;place-items:center}
+  .gauge .halo{
+    position:absolute;inset:16px;border-radius:50%;
+    background:radial-gradient(circle,rgba(79,70,229,.14),rgba(79,70,229,0) 68%);
+  }
+  .gauge svg.ring{position:absolute;inset:0;width:100%;height:100%}
+  .gauge .center{position:relative;text-align:center;z-index:2}
+  .gauge .big{
+    font-size:52px;font-weight:750;letter-spacing:-.03em;line-height:1;
+    font-variant-numeric:tabular-nums;
+  }
+  .gauge .big span{font-size:17px;font-weight:600;color:var(--ink3);margin-left:3px}
+  .gauge .rssi{margin-top:8px;font-size:12px;color:var(--ink3);letter-spacing:.02em}
+  .gauge.ringing .halo{animation:halo 1.4s ease-out infinite}
+  @keyframes halo{0%{transform:scale(.9);opacity:.9}100%{transform:scale(1.25);opacity:0}}
+  #needle{transition:transform .5s cubic-bezier(.3,.7,.4,1)}
+
+  .hint{text-align:center;font-size:12px;color:var(--ink3);margin:2px 0 18px;line-height:1.6}
+  .actions{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px}
+  .act{
+    background:#fff;border:1px solid var(--line);border-radius:15px;padding:11px 4px 9px;
+    display:flex;flex-direction:column;align-items:center;gap:5px;font-size:11px;color:var(--ink2);font-weight:600;
+    box-shadow:0 2px 8px rgba(24,26,64,.04);
+  }
+  .act b{font-size:18px;font-weight:400}
+  .act.primary{background:linear-gradient(140deg,var(--brand),var(--brand-2));color:#fff;border-color:transparent;box-shadow:0 10px 20px -10px rgba(79,70,229,.8)}
+  .act.primary.on{animation:pulse2 1s infinite}
+  @keyframes pulse2{0%,100%{transform:none}50%{transform:scale(.96)}}
+  .act:disabled{opacity:.45}
+
+  .card{background:#fff;border:1px solid var(--line);border-radius:var(--r);box-shadow:0 2px 10px rgba(24,26,64,.04)}
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border-radius:16px;overflow:hidden;margin-bottom:16px}
+  .stat{background:#fff;padding:12px 8px;text-align:center}
+  .stat .k{font-size:10.5px;color:var(--ink3);letter-spacing:.05em}
+  .stat .v{font-size:14px;font-weight:700;margin-top:3px}
+  .stat .v.ok{color:var(--ok)} .stat .v.bad{color:var(--bad)} .stat .v.warn{color:var(--warn)}
+
+  .h4{display:flex;justify-content:space-between;align-items:baseline;margin:18px 2px 8px;font-size:13px;color:var(--ink2)}
+  .h4 span{font-size:11.5px;color:var(--ink3);font-weight:400}
+  .hist{margin-bottom:6px;overflow:hidden}
+  .hist .row{display:flex;align-items:center;gap:12px;padding:11px 14px;border-bottom:1px solid #f1f2f8;font-size:13px}
+  .hist .row:last-child{border-bottom:0}
+  .hist .row .t{color:var(--ink3);font-size:11.5px;width:52px;font-variant-numeric:tabular-nums}
+  .hist .row .p{flex:1;color:var(--ink2)}
+  .hist .row .d{font-weight:650;font-variant-numeric:tabular-nums}
+
+  .settings-link{
+    width:100%;display:flex;align-items:center;justify-content:space-between;
+    padding:14px 16px;margin-top:14px;font-size:13.5px;font-weight:600;color:var(--ink2);
+  }
+  .settings-link i{color:var(--ink3);font-style:normal}
+
+  /* ============ 列表行（我的/设置） ============ */
+  .group{background:#fff;border:1px solid var(--line);border-radius:var(--r);overflow:hidden;margin-bottom:14px}
+  .row{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid #f2f3f9;font-size:14px}
+  .row:last-child{border-bottom:0}
+  .row .lead{width:34px;height:34px;border-radius:11px;background:var(--soft);display:grid;place-items:center;font-size:16px;flex:0 0 34px}
+  .row .txt{flex:1;min-width:0}
+  .row .txt b{display:block;font-weight:600;font-size:13.8px}
+  .row .txt small{color:var(--ink3);font-size:11.5px}
+  .row .val{color:var(--ink3);font-size:12.5px;display:flex;align-items:center;gap:6px}
+  .row .chev{color:#c3c6d8;font-size:15px}
+
+  .profile{display:flex;align-items:center;gap:14px;padding:18px 18px;margin-bottom:16px}
+  .avatar{
+    width:54px;height:54px;border-radius:19px;background:linear-gradient(140deg,#7c6cf0,#4f46e5);
+    color:#fff;display:grid;place-items:center;font-size:22px;font-weight:700;flex:0 0 54px;
+  }
+  .profile .who b{display:block;font-size:16px}
+  .profile .who span{font-size:12px;color:var(--ink3)}
+  .pro{font-size:10.5px;font-weight:700;letter-spacing:.06em;color:#8b7a1f;background:#fdf3cf;padding:2px 8px;border-radius:999px;margin-left:6px}
+
+  /* ============ 开关 / 滑杆 ============ */
+  .switch{width:44px;height:26px;border-radius:999px;background:#dcdeea;position:relative;transition:background .2s;flex:0 0 44px}
+  .switch::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+  .switch.on{background:var(--brand)}
+  .switch.on::after{transform:translateX(18px)}
+  .slider{-webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:99px;background:#e6e8f2;outline:0}
+  .slider::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:#fff;border:2px solid var(--brand);box-shadow:0 2px 6px rgba(0,0,0,.18)}
+  .slider-row{padding:14px 16px;border-bottom:1px solid #f2f3f9}
+  .slider-row:last-child{border-bottom:0}
+  .slider-row .top{display:flex;justify-content:space-between;font-size:13.5px;margin-bottom:10px}
+  .slider-row .top span{color:var(--ink3);font-size:12.5px}
+
+  /* ============ 添加设备流程 ============ */
+  .add-wrap{flex:1;display:flex;flex-direction:column;padding:0 20px 24px;min-height:0}
+  .add-title{font-size:21px;font-weight:700;margin:6px 0 4px}
+  .add-sub{font-size:12.5px;color:var(--ink3);margin-bottom:22px}
+  .radar{width:210px;height:210px;margin:8px auto 26px;position:relative}
+  .radar .ring{position:absolute;inset:0;border-radius:50%;border:1px solid #dcd9fb}
+  .radar .ring:nth-child(2){inset:26px}
+  .radar .ring:nth-child(3){inset:52px}
+  .radar .sweep{
+    position:absolute;inset:0;border-radius:50%;
+    background:conic-gradient(from 0deg,rgba(79,70,229,.28),rgba(79,70,229,0) 60%);
+    animation:sweep 2.2s linear infinite;
+  }
+  @keyframes sweep{to{transform:rotate(360deg)}}
+  .radar .me{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:20px}
+  .found{display:flex;flex-direction:column;gap:10px;margin-bottom:auto}
+  .found .f{
+    display:flex;align-items:center;gap:12px;background:#fff;border:1px solid var(--line);
+    border-radius:15px;padding:13px 14px;animation:pushIn .3s ease;
+  }
+  .found .f .ic{width:38px;height:38px;border-radius:12px;background:var(--soft);display:grid;place-items:center;font-size:18px}
+  .found .f .m{flex:1;font-size:13.5px;font-weight:600}
+  .found .f .m small{display:block;font-weight:400;color:var(--ink3);font-size:11.5px;margin-top:2px}
+  .found .f .go{font-size:12px;color:var(--brand);font-weight:700}
+
+  .btn{
+    width:100%;height:52px;border-radius:16px;font-size:15px;font-weight:650;
+    background:linear-gradient(140deg,var(--brand),var(--brand-2));color:#fff;
+    box-shadow:0 14px 26px -14px rgba(79,70,229,.9);margin-top:16px;
+  }
+  .btn:disabled{opacity:.45;box-shadow:none}
+  .btn.ghost{background:#fff;color:var(--ink2);border:1px solid var(--line);box-shadow:none}
+
+  .field{margin-bottom:16px}
+  .field label{display:block;font-size:12px;color:var(--ink3);margin-bottom:8px;letter-spacing:.03em}
+  .field input{
+    width:100%;height:48px;border-radius:14px;border:1px solid var(--line);background:#fff;
+    padding:0 14px;font-size:14.5px;outline:0;
+  }
+  .field input:focus{border-color:#c9c2fb;box-shadow:0 0 0 4px #f0edff}
+  .icons{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+  .icons button{
+    aspect-ratio:1;border-radius:14px;background:#fff;border:1px solid var(--line);font-size:20px;
+  }
+  .icons button.on{border-color:var(--brand);background:#f3f1ff;box-shadow:0 0 0 3px #eae6ff}
+  .chips{display:flex;gap:8px;flex-wrap:wrap}
+  .chips button{
+    padding:8px 15px;border-radius:999px;font-size:12.5px;background:#fff;border:1px solid var(--line);color:var(--ink2);
+  }
+  .chips button.on{background:var(--brand);color:#fff;border-color:var(--brand)}
+
+  .done{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 24px}
+  .done .check{
+    width:92px;height:92px;border-radius:50%;background:#e8f8f1;color:var(--ok);
+    display:grid;place-items:center;font-size:42px;margin-bottom:22px;animation:pop .45s cubic-bezier(.2,.9,.3,1.4)
+  }
+  @keyframes pop{0%{transform:scale(.4);opacity:0}100%{transform:none;opacity:1}}
+  .done h3{margin:0 0 6px;font-size:19px}
+  .done p{margin:0;color:var(--ink3);font-size:13px}
+
+  /* ============ 地图 ============ */
+  .mapwrap{position:relative;flex:1;min-height:0;overflow:hidden}
+  .mapwrap svg{width:100%;height:100%;display:block}
+  .map-panel{
+    position:absolute;left:14px;right:14px;bottom:14px;background:rgba(255,255,255,.96);
+    backdrop-filter:blur(10px);border-radius:18px;padding:14px;border:1px solid var(--line);
+    box-shadow:0 18px 30px -18px rgba(20,22,60,.45);
+  }
+  .map-panel .t{display:flex;align-items:center;gap:10px}
+  .map-panel .dot{width:8px;height:8px;border-radius:50%;background:var(--ok)}
+  .map-panel b{font-size:14.5px}
+  .map-panel small{display:block;color:var(--ink3);font-size:11.5px;margin-top:2px}
+  .map-panel .go{margin-left:auto;font-size:12.5px;color:var(--brand);font-weight:700}
+  .pin{transition:transform .2s}
+  .pin:active{transform:scale(1.12)}
+
+  /* ============ 弹层 ============ */
+  .overlay{position:absolute;inset:0;z-index:40;display:flex;align-items:flex-end;background:rgba(16,18,40,.42);animation:fade .2s ease}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+  .sheet{
+    width:100%;background:#fff;border-radius:24px 24px 0 0;padding:10px 20px calc(20px + env(safe-area-inset-bottom));
+    animation:up .26s cubic-bezier(.22,.61,.36,1);max-height:82%;overflow:auto;
+  }
+  @keyframes up{from{transform:translateY(30px)}to{transform:none}}
+  .sheet .grab{width:38px;height:4px;border-radius:99px;background:#e3e4ee;margin:2px auto 16px}
+  .sheet h3{margin:0 0 4px;font-size:16.5px}
+  .sheet p.sub{margin:0 0 16px;font-size:12.5px;color:var(--ink3)}
+
+  /* ============ Toast：做成系统通知横幅 ============ */
+  .toasts{position:absolute;top:46px;left:12px;right:12px;z-index:60;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+  .toast{
+    background:rgba(255,255,255,.97);color:var(--ink);font-size:12.8px;padding:11px 14px;border-radius:16px;
+    box-shadow:0 14px 30px -14px rgba(20,22,60,.5),0 0 0 1px rgba(255,255,255,.6) inset;
+    backdrop-filter:blur(12px);animation:tin .3s cubic-bezier(.22,.61,.36,1);display:flex;gap:10px;align-items:center;
+  }
+  .toast b{font-weight:650}
+  .toast .ti{width:28px;height:28px;border-radius:9px;background:#f1efff;display:grid;place-items:center;font-size:14px;flex:0 0 28px}
+  @keyframes tin{from{transform:translateY(-12px) scale(.97);opacity:0}to{transform:none;opacity:1}}
+
+  /* ============ 找手机 ============ */
+  .alarm{
+    position:absolute;inset:0;z-index:70;background:linear-gradient(160deg,#4f46e5,#7c5ce6);
+    color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center;
+    animation:fade .2s ease;padding:24px;
+  }
+  .alarm .ph{font-size:64px;animation:shake .5s infinite}
+  @keyframes shake{0%,100%{transform:translateX(-6px) rotate(-4deg)}50%{transform:translateX(6px) rotate(4deg)}}
+  .alarm h2{margin:14px 0 4px;font-size:24px}
+  .alarm p{margin:0 0 26px;color:#e2dfff;font-size:13px}
+  .alarm button{width:200px;height:50px;border-radius:16px;background:#fff;color:var(--brand);font-weight:700;font-size:15px}
+
+  @media (max-width:520px){
+    body{display:block;overflow:auto}
+    .phone{width:100%;height:100dvh;border-radius:0;padding:0;box-shadow:none;background:transparent}
+    .screen{border-radius:0}
+    .notch{display:none}
+    .statusbar{height:calc(30px + env(safe-area-inset-top));flex-basis:calc(30px + env(safe-area-inset-top))}
+  }
+</style>
+</head>
+<body>
+
+<div class="phone">
+  <div class="notch"></div>
+  <div class="screen">
+    <div class="statusbar">
+      <span id="clock">9:41</span>
+      <span class="right">
+        <span class="sig"><i></i><i></i><i></i><i></i></span>
+        <span class="batt"><i></i></span>
+      </span>
+    </div>
+    <div class="app" id="app"></div>
+    <div class="toasts" id="toasts"></div>
+  </div>
+</div>
+
+<script>
+/* =====================================================================
+   蓝牙智寻便签 · 可交互原型
+   浏览器无法直接访问 BLE，因此用「模拟设备引擎」驱动：距离、信号、
+   电量每秒随机漂移，状态、提醒、响铃全部按真实规则联动。
+   ===================================================================== */
+(function () {
+  'use strict';
+
+  var $app = document.getElementById('app');
+  var $toasts = document.getElementById('toasts');
+
+  var ICONS = ['🔑','👛','🎒','🎧','📺','🎮','🧸','💼','🐶','📱'];
+  var CATS  = ['钥匙','钱包','包袋','数码','其他'];
+  var KEY   = 'ble-tag-app-v1';
+
+  /* ---------------- 默认数据 ---------------- */
+  function seed() {
+    return {
+      user: {
+        name: 'ww',
+        family: [
+          { id:'u2', name:'妈妈', emoji:'👩', role:'家庭成员' },
+          { id:'u3', name:'小宇', emoji:'🧑', role:'家庭成员' }
+        ]
+      },
+      settings: { volume:70, led:true, threshold:10, lowBattery:10, muted:false },
+      devices: [
+        { id:'d1', name:'钥匙',   icon:'🔑', cat:'钥匙', battery:86, distance:2.4,  angle:38,  x:.30, y:.44,
+          hist:[{t:'08:12',d:'3.2',where:'玄关'},{t:'08:45',d:'2.8',where:'客厅'},{t:'09:20',d:'2.4',where:'书桌'}] },
+        { id:'d2', name:'钱包',   icon:'👛', cat:'钱包', battery:64, distance:8.1,  angle:212, x:.63, y:.30,
+          hist:[{t:'08:05',d:'6.4',where:'卧室'},{t:'08:40',d:'9.1',where:'客厅'},{t:'09:15',d:'8.1',where:'沙发'}] },
+        { id:'d3', name:'书包',   icon:'🎒', cat:'包袋', battery:8,  distance:4.6,  angle:120, x:.46, y:.67,
+          hist:[{t:'08:00',d:'5.2',where:'门口'},{t:'08:30',d:'4.9',where:'玄关'},{t:'09:10',d:'4.6',where:'鞋柜'}] },
+        { id:'d4', name:'遥控器', icon:'🎮', cat:'其他', battery:41, distance:31.2, angle:300, x:.78, y:.58,
+          hist:[{t:'08:20',d:'28',where:'客厅'},{t:'08:55',d:'31',where:'超出范围'}] }
+      ]
+    };
+  }
+
+  var S = load();
+  var view = 'home';
+  var currentId = null;
+  var add = null;          // 添加流程状态
+  var sheet = null;        // 当前弹层
+  var findingPhone = false;
+  var alertAt = {};        // 设备提醒节流
+
+  function load() {
+    try {
+      var raw = localStorage.getItem(KEY);
+      if (!raw) return seed();
+      var d = JSON.parse(raw);
+      if (!d.devices || !d.devices.length) return seed();
+      d.devices.forEach(function (x) {
+        x.ringing = false; x.lost = !!x.lost; x.hist = x.hist || [];
+        x.lowAlerted = false;
+      });
+      d.settings = Object.assign(seed().settings, d.settings || {});
+      d.user = Object.assign(seed().user, d.user || {});
+      return d;
+    } catch (e) { return seed(); }
+  }
+  function save() {
+    try {
+      localStorage.setItem(KEY, JSON.stringify({
+        user:S.user, settings:S.settings,
+        devices:S.devices.map(function (d) {
+          return { id:d.id,name:d.name,icon:d.icon,cat:d.cat,battery:d.battery,
+                   distance:d.distance,angle:d.angle,x:d.x,y:d.y,lost:d.lost,hist:d.hist };
+        })
+      }));
+    } catch (e) {}
+  }
+
+  /* ---------------- 工具 ---------------- */
+  function clamp(v,a,b){ return Math.min(b, Math.max(a, v)); }
+  function fmtDist(d){ return d < 10 ? d.toFixed(1) : Math.round(d); }
+  function rssiOf(x){
+    var dist = (typeof x === 'number') ? x : x.distance;
+    return Math.round(-59 - 20 * Math.log10(Math.max(dist, 0.6)));
+  }
+  function bars(d){ var r = rssiOf(d); return r > -60 ? 4 : r > -72 ? 3 : r > -82 ? 2 : 1; }
+  function statusOf(d){
+    if (d.lost) return 'lost';
+    if (d.distance > 25) return 'out';
+    if (d.battery <= S.settings.lowBattery) return 'low';
+    return 'online';
+  }
+  function statusText(d){
+    return { online:'在线', out:'超出范围', low:'电量不足', lost:'丢失模式' }[statusOf(d)];
+  }
+  function statusClass(d){ return { online:'', out:' is-out', low:' is-low', lost:' is-lost' }[statusOf(d)]; }
+  function nowHM(){
+    var n = new Date();
+    return ('0'+n.getHours()).slice(-2) + ':' + ('0'+n.getMinutes()).slice(-2);
+  }
+  function dev(id){ return S.devices.filter(function (d) { return d.id === id; })[0]; }
+  function esc(s){ return String(s).replace(/[&<>"]/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+
+  /* ---------------- 声音 ---------------- */
+  var AC = null;
+  function audio(){
+    if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
+    if (AC && AC.state === 'suspended') AC.resume();
+    return AC;
+  }
+  function beep(freq, dur, delay, vol){
+    var ac = audio(); if (!ac) return;
+    var t0 = ac.currentTime + (delay || 0);
+    var o = ac.createOscillator(), g = ac.createGain();
+    o.type = 'sine'; o.frequency.value = freq || 880;
+    var v = (vol == null ? 0.055 : vol) * (S.settings.volume / 100);
+    g.gain.setValueAtTime(0, t0);
+    g.gain.linearRampToValueAtTime(v, t0 + 0.015);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + (dur || 0.14));
+    o.connect(g); g.connect(ac.destination);
+    o.start(t0); o.stop(t0 + (dur || 0.14) + 0.02);
+  }
+  function ringPattern(){ beep(1180, .12, 0); beep(1180, .12, .18); }
+
+  /* ---------------- Toast ---------------- */
+  var bootAt = Date.now();
+  function toast(text, icon){
+    while ($toasts.children.length >= 2) { $toasts.removeChild($toasts.firstChild); }
+    var el = document.createElement('div');
+    el.className = 'toast';
+    el.innerHTML = '<span class="ti">' + (icon || '🔔') + '</span><span>' + esc(text) + '</span>';
+    $toasts.appendChild(el);
+    setTimeout(function () {
+      el.style.transition = 'opacity .3s, transform .3s';
+      el.style.opacity = '0'; el.style.transform = 'translateY(-8px)';
+      setTimeout(function () { el.remove(); }, 320);
+    }, 2800);
+  }
+
+  /* ---------------- 渲染 ---------------- */
+  function render(){
+    var html = '';
+    if (view === 'home')      html = homeHTML();
+    else if (view === 'detail')   html = detailHTML(dev(currentId));
+    else if (view === 'add')      html = addHTML();
+    else if (view === 'map')      html = mapHTML();
+    else if (view === 'me')       html = meHTML();
+    else if (view === 'settings') html = settingsHTML();
+
+    if (sheet) html += sheetHTML();
+    if (findingPhone) html += alarmHTML();
+
+    $app.innerHTML = html;
+    syncLive();
+  }
+
+  /* ---------- 首页 ---------- */
+  function deviceCard(d){
+    var sc = statusClass(d);
+    var st = statusOf(d);
+    var badge = st === 'lost' ? '丢失' : st === 'low' ? '低电量' : '';
+    return '' +
+      '<div class="dev'+sc+'" data-act="open" data-id="'+d.id+'" data-live="'+d.id+'">' +
+        (badge ? '<span class="badge">'+badge+'</span>' : '') +
+        '<div class="ic">'+d.icon+'</div>' +
+        '<div class="meta">' +
+          '<div class="nm"><span class="dot"></span>'+esc(d.name)+(d.important?' · 重要':'')+'</div>' +
+          '<div class="sub">' +
+            '<span class="js-status">'+statusText(d)+'</span><span>·</span>' +
+            '<span class="js-dist">'+(st==='out'?'—':fmtDist(d.distance)+' m')+'</span><span>·</span>' +
+            '<span class="js-bars">'+'▪'.repeat(bars(d))+'</span>' +
+          '</div>' +
+        '</div>' +
+        '<button class="ring'+(d.ringing?' on':'')+'" data-act="ring" data-id="'+d.id+'" aria-label="查找">🔔</button>' +
+      '</div>';
+  }
+  function homeHTML(){
+    var list = S.devices.map(deviceCard).join('');
+    var online = S.devices.filter(function (d) { return statusOf(d) === 'online'; }).length;
+    var hh = new Date().getHours();
+    var greetWord = hh < 6 ? '凌晨好' : hh < 12 ? '早上好' : hh < 18 ? '下午好' : '晚上好';
+    return '' +
+    '<div class="screen-body"><div class="push">' +
+      '<div class="home-head">' +
+        '<div class="greet">'+greetWord+'，'+esc(S.user.name)+'</div>' +
+        '<div class="home-title">' +
+          '<h1>我的物品<small>'+S.devices.length+' 件 · '+online+' 件在线</small></h1>' +
+          '<button class="icon-btn" data-act="find-phone" title="找手机">🔔</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="search"><span>⌕</span><input id="q" placeholder="搜索物品" autocomplete="off"></div>' +
+      '<div class="list" id="list">' + (list || '<div class="empty">还没有绑定任何物品</div>') + '</div>' +
+      '<button class="fab" data-act="add">+</button>' +
+    '</div></div>' + tabbar('home');
+  }
+
+  /* ---------- 详情 ---------- */
+  function detailHTML(d){
+    if (!d) return '<div class="empty">设备不存在</div>' + tabbar('home');
+    var st = statusOf(d);
+    var hist = (d.hist || []).slice(-5).reverse().map(function (h) {
+      return '<div class="row"><span class="t">'+h.t+'</span><span class="p">'+h.where+'</span><span class="d">'+h.d+' m</span></div>';
+    }).join('') || '<div class="row"><span class="p" style="color:#8b8ea6">还没有轨迹记录</span></div>';
+
+    return '' +
+    '<div class="screen-body"><div class="push">' +
+      '<div class="bar">' +
+        '<button class="back" data-act="back">‹</button>' +
+        '<h2>'+d.icon+' '+esc(d.name)+'</h2>' +
+        '<button class="more" data-act="settings">⋯</button>' +
+      '</div>' +
+      '<div class="detail">' +
+        '<div class="gauge-wrap">' +
+          '<div class="gauge'+(d.ringing?' ringing':'')+'" id="gauge">' +
+            '<div class="halo"></div>' +
+            '<svg class="ring" viewBox="0 0 250 250">' +
+              '<circle cx="125" cy="125" r="112" fill="none" stroke="#e9eaf4" stroke-width="1"/>' +
+              '<circle cx="125" cy="125" r="112" fill="none" stroke="#4f46e5" stroke-width="2.5" ' +
+                'stroke-linecap="round" stroke-dasharray="'+(2*Math.PI*112)+'" ' +
+                'stroke-dashoffset="'+(2*Math.PI*112*(1-clamp(1-(d.distance/30),0.06,1)))+'" ' +
+                'transform="rotate(-90 125 125)" opacity=".8"/>' +
+              '<g id="needle" transform="rotate('+d.angle+' 125 125)">' +
+                '<path d="M125 20 L135 52 L128.5 50 L128.5 71 L121.5 71 L121.5 50 L115 52 Z" fill="#4f46e5"/>' +
+              '</g>' +
+              '<circle cx="125" cy="125" r="56" fill="#fff" stroke="#eef0f8" stroke-width="1"/>' +
+            '</svg>' +
+            '<div class="center">' +
+              '<div class="big"><span class="js-bigdist">'+(st==='out'?'—':fmtDist(d.distance))+'</span><span>米</span></div>' +
+              '<div class="rssi js-rssi">'+rssiOf(d)+' dBm · '+statusText(d)+'</div>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        '<p class="hint">'+(st==='out'
+            ? '超出蓝牙范围，显示的是最后已知位置'
+            : '缓慢转动身体，信号最强时指针朝前')+'</p>' +
+
+        '<div class="actions">' +
+          '<button class="act primary'+(d.ringing?' on':'')+'" data-act="ring" data-id="'+d.id+'"><b>🔔</b>响铃</button>' +
+          '<button class="act" data-act="stopring" data-id="'+d.id+'"'+(d.ringing?'':' disabled')+'><b>⏹</b>停止</button>' +
+          '<button class="act" data-act="share" data-id="'+d.id+'"><b>👥</b>共享</button>' +
+          '<button class="act" data-act="lost" data-id="'+d.id+'"><b>'+(d.lost?'✅':'📢')+'</b>'+(d.lost?'取消丢失':'标记丢失')+'</button>' +
+        '</div>' +
+
+        '<div class="stats">' +
+          '<div class="stat"><div class="k">电量</div><div class="v '+(d.battery<=S.settings.lowBattery?'bad':'ok')+'">'+Math.round(d.battery)+'%</div></div>' +
+          '<div class="stat"><div class="k">状态</div><div class="v '+(st==='online'?'ok':st==='low'?'bad':'warn')+'">'+statusText(d)+'</div></div>' +
+          '<div class="stat"><div class="k">信号</div><div class="v">'+rssiOf(d)+'</div></div>' +
+        '</div>' +
+
+        '<div class="h4">历史位置<span>最近 30 天</span></div>' +
+        '<div class="card hist">'+hist+'</div>' +
+
+        '<button class="card settings-link" data-act="settings"><span>⚙️ 设备设置</span><i>音量 · 灯光 · 提醒距离 ›</i></button>' +
+      '</div>' +
+    '</div></div>';
+  }
+
+  /* ---------- 添加流程 ---------- */
+  function addHTML(){
+    if (!add) add = { step:1, found:[], picked:null, name:'新便签', icon:'🔑', cat:'钥匙' };
+
+    if (add.step === 1) {
+      var items = add.found.map(function (f) {
+        return '<div class="f"><div class="ic">🏷️</div>' +
+          '<div class="m">'+f.mac+'<small>信号 '+f.rssi+' dBm · 未绑定</small></div>' +
+          '<button class="go" data-act="pick" data-id="'+f.id+'">绑定</button></div>';
+      }).join('');
+      return '' +
+      '<div class="screen-body"><div class="push add-wrap">' +
+        '<div class="bar" style="padding-left:0;padding-right:0">' +
+          '<button class="back" data-act="add-cancel">‹</button>' +
+          '<h2 class="left" style="margin-left:0">添加设备</h2>' +
+        '</div>' +
+        '<div class="add-title">正在扫描附近便签</div>' +
+        '<div class="add-sub">请让便签靠近手机，保持亮屏</div>' +
+        '<div class="radar">' +
+          '<div class="ring"></div><div class="ring"></div><div class="ring"></div>' +
+          '<div class="sweep"></div><div class="me">📱</div>' +
+        '</div>' +
+        '<div class="found" id="found">' + items + '</div>' +
+        '<button class="btn ghost" data-act="add-cancel">取消</button>' +
+      '</div></div>';
+    }
+
+    if (add.step === 2) {
+      return '' +
+      '<div class="screen-body"><div class="push add-wrap">' +
+        '<div class="bar" style="padding-left:0;padding-right:0">' +
+          '<button class="back" data-act="add-back">‹</button>' +
+          '<h2 class="left" style="margin-left:0">设置名称</h2>' +
+        '</div>' +
+        '<div class="field"><label>名称</label>' +
+          '<input id="devname" value="'+esc(add.name)+'" maxlength="12" placeholder="例如：钥匙"></div>' +
+        '<div class="field"><label>图标</label><div class="icons">' +
+          ICONS.map(function (i) {
+            return '<button data-act="icon" data-v="'+i+'" class="'+(add.icon===i?'on':'')+'">'+i+'</button>';
+          }).join('') +
+        '</div></div>' +
+        '<div class="field"><label>分类</label><div class="chips">' +
+          CATS.map(function (c) {
+            return '<button data-act="cat" data-v="'+c+'" class="'+(add.cat===c?'on':'')+'">'+c+'</button>';
+          }).join('') +
+        '</div></div>' +
+        '<div style="flex:1"></div>' +
+        '<button class="btn" data-act="bind">开始绑定</button>' +
+      '</div></div>';
+    }
+
+    if (add.step === 3) {
+      return '' +
+      '<div class="screen-body"><div class="push add-wrap">' +
+        '<div style="flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center">' +
+          '<div style="font-size:44px;margin-bottom:18px">🏷️</div>' +
+          '<h3 style="margin:0 0 6px">正在配对…</h3>' +
+          '<p style="color:#8b8ea6;font-size:13px;margin:0">BLE 握手 · 写入设备 ID</p>' +
+        '</div>' +
+      '</div></div>';
+    }
+
+    return '' +
+    '<div class="screen-body"><div class="push">' +
+      '<div class="done">' +
+        '<div class="check">✓</div>' +
+        '<h3>绑定成功</h3>' +
+        '<p>'+esc(add.name)+' 已加入我的物品，去试试响铃查找吧</p>' +
+      '</div>' +
+      '<div style="padding:0 20px 26px">' +
+        '<button class="btn" data-act="add-done">完成</button>' +
+      '</div>' +
+    '</div></div>';
+  }
+
+  /* ---------- 地图 ---------- */
+  function mapHTML(){
+    var pins = S.devices.map(function (d) {
+      var st = statusOf(d);
+      var color = st === 'lost' ? '#f59e0b' : st === 'out' ? '#9aa0b4' : st === 'low' ? '#ef4444' : '#4f46e5';
+      return '<g class="pin" data-act="open" data-id="'+d.id+'" style="cursor:pointer">' +
+        '<circle cx="'+(d.x*360)+'" cy="'+(d.y*560)+'" r="16" fill="'+color+'" opacity=".15"/>' +
+        '<circle cx="'+(d.x*360)+'" cy="'+(d.y*560)+'" r="8" fill="'+color+'" stroke="#fff" stroke-width="2.5"/>' +
+        '<text x="'+(d.x*360)+'" y="'+(d.y*560+27)+'" text-anchor="middle" font-size="10.5" fill="#4d5069" font-weight="600">'+esc(d.name)+'</text>' +
+      '</g>';
+    }).join('');
+
+    var first = S.devices[0];
+    return '' +
+    '<div class="screen-body" style="display:flex;flex-direction:column">' +
+      '<div class="bar"><h2 class="left" style="margin-left:2px">地图</h2>' +
+        '<span style="font-size:11.5px;color:#8b8ea6">最后已知位置</span></div>' +
+      '<div class="mapwrap">' +
+        '<svg viewBox="0 0 360 560" preserveAspectRatio="xMidYMid slice">' +
+          '<rect width="360" height="560" fill="#eef1f7"/>' +
+          '<path d="M-20 120 H380" stroke="#dfe4ee" stroke-width="26"/>' +
+          '<path d="M-20 330 H380" stroke="#dfe4ee" stroke-width="18"/>' +
+          '<path d="M90 -20 V580" stroke="#dfe4ee" stroke-width="20"/>' +
+          '<path d="M250 -20 V580" stroke="#dfe4ee" stroke-width="14"/>' +
+          '<path d="M-20 460 L380 380" stroke="#dfe4ee" stroke-width="12"/>' +
+          '<rect x="120" y="150" width="90" height="60" rx="6" fill="#e4e9f2"/>' +
+          '<rect x="268" y="360" width="70" height="52" rx="6" fill="#e4e9f2"/>' +
+          '<rect x="30" y="370" width="46" height="70" rx="6" fill="#e4e9f2"/>' +
+          '<path d="M150 240 q40 -30 80 10 q30 30 -10 60" fill="none" stroke="#8fc9d8" stroke-width="14" opacity=".55"/>' +
+          pins +
+        '</svg>' +
+        '<div class="map-panel" data-act="open" data-id="'+first.id+'">' +
+          '<div class="t"><span class="dot"></span><div><b>'+first.icon+' '+esc(first.name)+'</b>' +
+          '<small>'+nowHM()+' 更新 · 距你 '+fmtDist(first.distance)+' 米</small></div>' +
+          '<span class="go">详情 ›</span></div>' +
+        '</div>' +
+      '</div>' +
+    '</div>' + tabbar('map');
+  }
+
+  /* ---------- 我的 ---------- */
+  function meHTML(){
+    var fam = S.user.family.map(function (m) {
+      return '<div class="row"><div class="lead">'+m.emoji+'</div>' +
+        '<div class="txt"><b>'+esc(m.name)+'</b><small>'+m.role+'</small></div>' +
+        '<span class="chev">›</span></div>';
+    }).join('');
+    var lost = S.devices.filter(function (d) { return d.lost; }).length;
+    var low  = S.devices.filter(function (d) { return d.battery <= S.settings.lowBattery; }).length;
+
+    return '' +
+    '<div class="screen-body"><div class="push">' +
+      '<div class="bar"><h2 class="left" style="margin-left:2px">我的</h2></div>' +
+      '<div class="pad">' +
+        '<div class="card profile">' +
+          '<div class="avatar">'+esc(S.user.name.charAt(0).toUpperCase())+'</div>' +
+          '<div class="who"><b>'+esc(S.user.name)+'<span class="pro">家庭组 · 所有者</span></b>' +
+            '<span>已绑定 '+S.devices.length+' 件物品</span></div>' +
+        '</div>' +
+
+        '<div class="h4">家庭组<span>'+S.user.family.length+' 位成员</span></div>' +
+        '<div class="group">'+fam+
+          '<div class="row" data-act="invite"><div class="lead">＋</div>' +
+            '<div class="txt"><b>邀请家人</b><small>共享查找权限</small></div><span class="chev">›</span></div>' +
+        '</div>' +
+
+        '<div class="h4">提醒</div>' +
+        '<div class="group">' +
+          '<div class="row" data-act="lostlist"><div class="lead">📢</div>' +
+            '<div class="txt"><b>丢失上报</b><small>已标记 '+lost+' 件</small></div><span class="chev">›</span></div>' +
+          '<div class="row" data-act="settings"><div class="lead">🔋</div>' +
+            '<div class="txt"><b>电池提醒</b><small>'+low+' 件电量偏低</small></div><span class="chev">›</span></div>' +
+        '</div>' +
+
+        '<div class="group">' +
+          '<div class="row" data-act="settings"><div class="lead">⚙️</div>' +
+            '<div class="txt"><b>设置</b><small>音量 · 灯光 · 提醒距离</small></div><span class="chev">›</span></div>' +
+          '<div class="row" data-act="reset"><div class="lead">↺</div>' +
+            '<div class="txt"><b>恢复演示数据</b><small>清空本地记录并重置</small></div><span class="chev">›</span></div>' +
+        '</div>' +
+        '<p style="text-align:center;color:#a3a6ba;font-size:11px;margin:18px 0 90px">蓝牙智寻便签 · 原型 v1.0</p>' +
+      '</div>' +
+    '</div></div>' + tabbar('me');
+  }
+
+  /* ---------- 设置 ---------- */
+  function settingsHTML(){
+    var s = S.settings;
+    return '' +
+    '<div class="screen-body"><div class="push">' +
+      '<div class="bar"><button class="back" data-act="back">‹</button><h2>设置</h2><span style="width:36px"></span></div>' +
+      '<div class="pad">' +
+        '<div class="h4">便签</div>' +
+        '<div class="card" style="margin-bottom:14px">' +
+          '<div class="slider-row"><div class="top"><span style="color:#15172b">蜂鸣音量</span><span>'+s.volume+'%</span></div>' +
+            '<input class="slider" type="range" min="0" max="100" step="5" value="'+s.volume+'" data-set="volume"></div>' +
+          '<div class="row"><div class="lead">💡</div><div class="txt"><b>LED 灯光</b><small>查找时闪烁提示</small></div>' +
+            '<span class="switch '+(s.led?'on':'')+'" data-act="toggle" data-k="led"></span></div>' +
+          '<div class="slider-row"><div class="top"><span style="color:#15172b">离开提醒距离</span><span>'+s.threshold+' 米</span></div>' +
+            '<input class="slider" type="range" min="5" max="30" step="1" value="'+s.threshold+'" data-set="threshold"></div>' +
+          '<div class="slider-row"><div class="top"><span style="color:#15172b">低电量阈值</span><span>'+s.lowBattery+'%</span></div>' +
+            '<input class="slider" type="range" min="5" max="20" step="1" value="'+s.lowBattery+'" data-set="lowBattery"></div>' +
+        '</div>' +
+
+        '<div class="h4">提醒</div>' +
+        '<div class="card" style="margin-bottom:14px">' +
+          '<div class="row"><div class="lead">🔕</div><div class="txt"><b>免打扰</b><small>低电量提醒除外</small></div>' +
+            '<span class="switch '+(s.muted?'on':'')+'" data-act="toggle" data-k="muted"></span></div>' +
+          '<div class="row"><div class="lead">📍</div><div class="txt"><b>位置权限</b><small>仅用于记录最后位置</small></div>' +
+            '<span class="val">已允许</span></div>' +
+        '</div>' +
+
+        '<p style="color:#a3a6ba;font-size:11.5px;line-height:1.7;margin:16px 4px 90px">' +
+        '位置数据默认只保存在本机，仅在共享与丢失场景下加密上传。' +
+        '</p>' +
+      '</div>' +
+    '</div></div>';
+  }
+
+  /* ---------- 弹层 ---------- */
+  function sheetHTML(){
+    if (sheet.type === 'share') {
+      var d = dev(sheet.id);
+      var rows = S.user.family.map(function (m) {
+        var on = (d.shared || []).indexOf(m.id) >= 0;
+        return '<div class="row" data-act="toggle-share" data-uid="'+m.id+'">' +
+          '<div class="lead">'+m.emoji+'</div>' +
+          '<div class="txt"><b>'+esc(m.name)+'</b><small>'+(on?'可查看位置与响铃':'未共享')+'</small></div>' +
+          '<span class="switch '+(on?'on':'')+'"></span></div>';
+      }).join('');
+      return overlay('' +
+        '<div class="sheet"><div class="grab"></div>' +
+        '<h3>共享「'+esc(d.name)+'」</h3>' +
+        '<p class="sub">家人可在自己的手机上查找这件物品</p>' +
+        '<div class="group" style="margin-bottom:10px">'+rows+'</div>' +
+        '<button class="btn" data-act="close-sheet">完成</button>' +
+      '</div>');
+    }
+    if (sheet.type === 'lost') {
+      var dd = dev(sheet.id);
+      return overlay('' +
+        '<div class="sheet"><div class="grab"></div>' +
+        '<h3>'+(dd.lost?'取消丢失模式':'标记为丢失')+'</h3>' +
+        '<p class="sub">'+(dd.lost
+          ? '取消后，周围设备将不再上报这件物品的位置。'
+          : '开启后，附近其他用户的设备会在匿名模式下帮助上报位置，数据不含你的身份信息。')+'</p>' +
+        '<button class="btn" data-act="confirm-lost">'+(dd.lost?'取消丢失':'确认标记丢失')+'</button>' +
+        '<button class="btn ghost" data-act="close-sheet" style="margin-top:10px">再想想</button>' +
+      '</div>');
+    }
+    return '';
+  }
+  function overlay(inner){
+    return '<div class="overlay" data-act="close-sheet">'+inner+'</div>';
+  }
+
+  function alarmHTML(){
+    return '' +
+    '<div class="alarm">' +
+      '<div class="ph">📱</div>' +
+      '<h2>手机在这里</h2>' +
+      '<p>便签按键触发了响铃</p>' +
+      '<button data-act="alarm-stop">停止响铃</button>' +
+    '</div>';
+  }
+
+  /* ---------- 底部导航 ---------- */
+  function tabbar(active){
+    function t(k, label, path){
+      return '<button class="tab '+(active===k?'on':'')+'" data-act="tab" data-v="'+k+'">' +
+        '<svg viewBox="0 0 24 24">'+path+'</svg><span>'+label+'</span></button>';
+    }
+    return '<div class="tabbar">' +
+      t('home','首页','<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/>') +
+      t('map','地图','<path d="M12 21s7-6.4 7-11a7 7 0 1 0-14 0c0 4.6 7 11 7 11Z"/><circle cx="12" cy="10" r="2.6"/>') +
+      t('me','我的','<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6.5 8-6.5S20 17 20 21"/>') +
+    '</div>';
+  }
+
+  /* ---------------- 实时刷新 ---------------- */
+  function syncLive(){
+    S.devices.forEach(function (d) {
+      var card = $app.querySelector('[data-live="'+d.id+'"]');
+      if (card) {
+        var st = statusOf(d);
+        card.className = 'dev' + statusClass(d);
+        var sd = card.querySelector('.js-dist');
+        var ss = card.querySelector('.js-status');
+        var sb = card.querySelector('.js-bars');
+        if (sd) sd.textContent = st === 'out' ? '—' : fmtDist(d.distance) + ' m';
+        if (ss) ss.textContent = statusText(d);
+        if (sb) sb.textContent = '▪'.repeat(bars(d));
+        var rb = card.querySelector('.ring');
+        if (rb) rb.classList.toggle('on', !!d.ringing);
+      }
+    });
+
+    if (view === 'detail') {
+      var cur = dev(currentId);
+      if (cur) {
+        var bd = $app.querySelector('.js-bigdist');
+        var rs = $app.querySelector('.js-rssi');
+        var nd = $app.querySelector('#needle');
+        if (bd) bd.textContent = statusOf(cur) === 'out' ? '—' : fmtDist(cur.distance);
+        if (rs) rs.textContent = rssiOf(cur) + ' dBm · ' + statusText(cur);
+        if (nd) nd.setAttribute('transform', 'rotate(' + cur.angle + ' 125 125)');
+        var g = $app.querySelector('#gauge');
+        if (g) g.classList.toggle('ringing', !!cur.ringing);
+        var stop = $app.querySelector('[data-act="stopring"]');
+        if (stop) stop.disabled = !cur.ringing;
+      }
+    }
+  }
+
+  /* ---------------- 模拟引擎 ---------------- */
+  var tickCount = 0;
+  function tick(){
+    tickCount++;
+    var muted = S.settings.muted;
+
+    S.devices.forEach(function (d) {
+      if (d.lost) { return; }
+
+      // 距离随机漂移：轻微向外扩散，偶尔跳变
+      d.distance = clamp(d.distance + (Math.random() - 0.47) * 1.1, 0.4, 42);
+      if (Math.random() < 0.035) d.distance = clamp(d.distance + Math.random() * 7, 0.4, 42);
+
+      // 方向指针漂移；响铃且在范围内时朝 0° 收敛
+      if (d.ringing && d.distance < 12) {
+        var diff = ((0 - d.angle + 540) % 360) - 180;
+        d.angle = (d.angle + diff * 0.18 + (Math.random() - 0.5) * 26 + 360) % 360;
+      } else {
+        d.angle = (d.angle + (Math.random() - 0.5) * 34 + 360) % 360;
+      }
+
+      d.battery = Math.max(0, d.battery - 0.0015);
+
+      // 响铃 30 秒自动停止
+      if (d.ringing) {
+        if (!d.ringStarted) { d.ringStarted = Date.now(); ringPattern(); }
+        else if (Date.now() - d.ringStarted > 30000) {
+          d.ringing = false; d.ringStarted = 0;
+          toast('「' + d.name + '」已停止响铃', '⏹');
+        } else if (tickCount % 2 === 0) {
+          ringPattern();
+        }
+      } else {
+        d.ringStarted = 0;
+      }
+
+      // 离开提醒（节流 60 秒；启动后 8 秒内不打扰）
+      var key = 'a' + d.id;
+      if (!muted && Date.now() - bootAt > 8000 && d.distance > S.settings.threshold &&
+          (Date.now() - (alertAt[key] || 0) > 60000)) {
+        alertAt[key] = Date.now();
+        toast('「' + d.name + '」已超出 ' + S.settings.threshold + ' 米', '📍');
+        beep(660, .1, 0); beep(520, .16, .14);
+      }
+
+      // 低电量提醒（只提醒一次）
+      if (!d.lowAlerted && Date.now() - bootAt > 8000 && d.battery <= S.settings.lowBattery) {
+        d.lowAlerted = true;
+        toast('「' + d.name + '」电量仅剩 ' + Math.round(d.battery) + '%', '🔋');
+      }
+    });
+
+    // 轨迹每 10 秒记录一次
+    if (tickCount % 10 === 0) {
+      S.devices.forEach(function (d) {
+        if (!d.hist) d.hist = [];
+        d.hist.push({ t: nowHM(), d: fmtDist(d.distance), where: d.distance > 25 ? '超出范围' : '附近' });
+        if (d.hist.length > 12) d.hist.shift();
+      });
+      save();
+    }
+
+    syncLive();
+  }
+
+  /* ---------------- 交互 ---------------- */
+  function go(v){
+    view = v;
+    add = null;
+    render();
+    var body = $app.querySelector('.screen-body');
+    if (body) body.scrollTop = 0;
+  }
+
+  $app.addEventListener('click', function (e) {
+    var el = e.target.closest('[data-act]');
+    if (!el) return;
+    var act = el.getAttribute('data-act');
+    var id  = el.getAttribute('data-id');
+
+    switch (act) {
+      case 'tab':
+        go(el.getAttribute('data-v'));
+        return;
+
+      case 'open':
+        currentId = id; go('detail'); return;
+
+      case 'back':
+        if (view === 'detail' || view === 'settings') go('home');
+        else go('home');
+        return;
+
+      case 'add':
+        add = { step:1, found:[], picked:null, name:'新便签', icon:'🔑', cat:'钥匙' };
+        view = 'add'; render(); startScan(); return;
+
+      case 'add-cancel':
+        go('home'); return;
+
+      case 'add-back':
+        add.step = 1; render(); startScan(); return;
+
+      case 'pick':
+        var f = add.found.filter(function (x) { return x.id === id; })[0];
+        if (f) {
+          add.picked = f;
+          add.name = '新便签';
+          add.step = 2;
+          render();
+        }
+        return;
+
+      case 'icon':
+        add.icon = el.getAttribute('data-v'); render(); return;
+
+      case 'cat':
+        add.cat = el.getAttribute('data-v'); render(); return;
+
+      case 'bind': {
+        var nm = $app.querySelector('#devname');
+        if (nm) add.name = (nm.value || '').trim() || '新便签';
+        add.step = 3; render();
+        setTimeout(function () {
+          S.devices.push({
+            id: 'd' + Date.now(),
+            name: add.name, icon: add.icon, cat: add.cat,
+            battery: 100, distance: 1.2, angle: 180,
+            x: 0.3 + Math.random() * 0.4, y: 0.3 + Math.random() * 0.4,
+            hist: [], shared: [], lost: false
+          });
+          save();
+          add.step = 4;
+          render();
+          beep(880, .1); beep(1180, .14, .12);
+        }, 1400);
+        return;
+      }
+
+      case 'add-done':
+        add = null; go('home');
+        toast('已添加「' + S.devices[S.devices.length-1].name + '」', '✅');
+        return;
+
+      case 'ring': {
+        var d1 = dev(id);
+        if (!d1) return;
+        if (d1.lost) { toast('丢失模式下发不出响铃指令', '⚠️'); return; }
+        d1.ringing = true;
+        d1.ringStarted = Date.now();
+        audio();
+        ringPattern();
+        toast('正在响铃，30 秒后自动停止', '🔔');
+        render();
+        return;
+      }
+
+      case 'stopring': {
+        var d2 = dev(id);
+        if (d2) { d2.ringing = false; d2.ringStarted = 0; }
+        render();
+        return;
+      }
+
+      case 'share':
+        sheet = { type:'share', id: id }; render(); return;
+
+      case 'toggle-share': {
+        var dd = dev(sheet.id);
+        var uid = el.getAttribute('data-uid');
+        dd.shared = dd.shared || [];
+        var i = dd.shared.indexOf(uid);
+        if (i >= 0) dd.shared.splice(i, 1); else dd.shared.push(uid);
+        save(); render();
+        return;
+      }
+
+      case 'lost':
+        sheet = { type:'lost', id: id }; render(); return;
+
+      case 'confirm-lost': {
+        var d3 = dev(sheet.id);
+        d3.lost = !d3.lost;
+        d3.ringing = false;
+        sheet = null;
+        save(); render();
+        toast(d3.lost ? '已开启丢失模式，等待匿名上报' : '已取消丢失模式', d3.lost ? '📢' : '✅');
+        return;
+      }
+
+      case 'close-sheet':
+        if (el.classList.contains('overlay')) {
+          if (e.target === el) { sheet = null; render(); }
+        } else {
+          sheet = null; render();
+        }
+        return;
+
+      case 'find-phone':
+        findingPhone = true; render();
+        audio(); beep(1000, .18); beep(1000, .18, .3); beep(1000, .18, .6);
+        return;
+
+      case 'alarm-stop':
+        findingPhone = false; render();
+        toast('已停止响铃', '✅');
+        return;
+
+      case 'settings':
+        go('settings'); return;
+
+      case 'invite':
+        toast('邀请链接已复制，发给家人即可加入', '🔗');
+        return;
+
+      case 'lostlist':
+        go('home'); toast('丢失上报记录在对应物品详情里查看', '📢');
+        return;
+
+      case 'reset':
+        if (confirm('清空本地数据并恢复演示设备？')) {
+          localStorage.removeItem(KEY);
+          S = seed(); go('home');
+          toast('已恢复演示数据', '↺');
+        }
+        return;
+    }
+  });
+
+  // 滑块
+  $app.addEventListener('input', function (e) {
+    var t = e.target;
+    if (!t.dataset || !t.dataset.set) return;
+    var k = t.dataset.set;
+    S.settings[k] = Number(t.value);
+    var top = t.closest('.slider-row').querySelector('.top span:last-child');
+    top.textContent = (k === 'volume' ? S.settings.volume + '%'
+                     : k === 'threshold' ? S.settings.threshold + ' 米'
+                     : S.settings.lowBattery + '%');
+    if (k === 'volume') beep(880, .08, 0, .05);
+    save();
+  });
+
+  $app.addEventListener('click', function (e) {
+    var sw = e.target.closest('[data-act="toggle"]');
+    if (!sw) return;
+    var k = sw.getAttribute('data-k');
+    S.settings[k] = !S.settings[k];
+    save(); render();
+  });
+
+  // 搜索
+  $app.addEventListener('input', function (e) {
+    if (e.target.id !== 'q') return;
+    var q = e.target.value.trim();
+    var list = document.getElementById('list');
+    if (!list) return;
+    var hits = S.devices.filter(function (d) { return d.name.indexOf(q) >= 0; });
+    list.innerHTML = hits.length ? hits.map(deviceCard).join('') : '<div class="empty">没有找到相关物品</div>';
+  });
+
+  // 添加流程里的扫描模拟
+  var scanTimer = null;
+  function startScan(){
+    clearTimeout(scanTimer);
+    add.found = [];
+    var pool = ['TAG-A2F3','TAG-C81D','TAG-7B02','TAG-91EE'];
+    var i = 0;
+    (function next(){
+      if (!add || add.step !== 1) return;
+      if (i < 2 + Math.floor(Math.random() * 2) && i < pool.length) {
+        add.found.push({
+          id: 's' + i,
+          mac: pool[i],
+          rssi: -Math.round(48 + Math.random() * 28)
+        });
+        render();
+        i++;
+        scanTimer = setTimeout(next, 700);
+      }
+    })();
+  }
+
+  // 时钟
+  function clock(){
+    var el = document.getElementById('clock');
+    if (el) el.textContent = nowHM();
+  }
+  clock(); setInterval(clock, 30000);
+
+  setInterval(tick, 1000);
+  render();
+
+  // 支持通过地址栏直接定位界面，例如 #detail=d1 / #map / #me / #settings
+  (function () {
+    var m = /^#(home|map|me|settings|detail|add)(?:=(.+))?$/.exec(location.hash);
+    if (!m) return;
+    if (m[1] === 'detail' && m[2] && dev(m[2])) {
+      currentId = m[2];
+      go('detail');
+    } else if (m[1] === 'add') {
+      add = { step:1, found:[], picked:null, name:'新便签', icon:'🔑', cat:'钥匙' };
+      view = 'add'; render(); startScan();
+    } else if (m[1] !== 'detail') {
+      go(m[1]);
+    }
+  })();
+})();
+</script>
+</body>
+</html>
